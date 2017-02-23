@@ -4,17 +4,17 @@ package self.sunng.multidatasourcewithtransaction.common;
  * Created by sunxiaodong on 2016/11/12.
  */
 
+import com.alibaba.druid.pool.DruidDataSource;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.SqlSessionFactoryBean;
 import org.mybatis.spring.annotation.MapperScan;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceBuilder;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.annotation.Primary;
-import org.springframework.core.env.Environment;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 
 import javax.sql.DataSource;
@@ -22,57 +22,35 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Configuration
-@MapperScan(basePackages = "self.sunng.multidatasourcewithtransaction.dao")
+@MapperScan(basePackages = "self.sunng.multidatasourcewithtransaction.dao.mapper")
 public class MyBatisConfig {
 
-    @Autowired
-    private Environment env;
+    private Class<? extends DataSource> datasourceType = DruidDataSource.class;
 
     @Bean(name = "primaryDataSource")
-    @Qualifier("primaryDataSource")
-    @ConfigurationProperties(prefix="spring.datasource.master")
+    @ConfigurationProperties(prefix = "datasource.master")
     public DataSource primaryDataSource() {
-        return DataSourceBuilder.create().build();
+        return DataSourceBuilder.create().type(datasourceType).build();
     }
 
     @Bean(name = "secondaryDataSource")
-    @Qualifier("secondaryDataSource")
-    @Primary
-    @ConfigurationProperties(prefix="spring.datasource.slave")
+    @ConfigurationProperties(prefix = "datasource.slave")
     public DataSource secondaryDataSource() {
-        return DataSourceBuilder.create().build();
+        return DataSourceBuilder.create().type(datasourceType).build();
     }
 
-//    @Bean
-//    public DataSource masterDataSource() throws Exception {
-//        Properties props = new Properties();
-//        props.put("driverClassName", env.getProperty("spring.datasource.master.driver-class-name"));
-//        props.put("url", env.getProperty("spring.datasource.master.url"));
-//        props.put("username", env.getProperty("spring.datasource.master.username"));
-//        props.put("password", env.getProperty("spring.datasource.master.password"));
-//        return DruidDataSourceFactory.createDataSource(props);
-//    }
-//
-//    @Bean
-//    public DataSource slaveDataSource() throws Exception {
-//        Properties props = new Properties();
-//        props.put("driverClassName", env.getProperty("spring.datasource.slave.driver-class-name"));
-//        props.put("url", env.getProperty("spring.datasource.slave.url"));
-//        props.put("username", env.getProperty("spring.datasource.slave.username"));
-//        props.put("password", env.getProperty("spring.datasource.slave.password"));
-//        return DruidDataSourceFactory.createDataSource(props);
-//    }
-
-    @Bean
-    public DynamicDataSource dynamicDataSource(@Qualifier("primaryDataSource") DataSource masterDataSource,
-                                               @Qualifier("secondaryDataSource") DataSource slaveDataSource) {
+    @Bean(name = "dynamicDataSource")
+    @Primary
+    @DependsOn("primaryDataSource")
+    public DynamicDataSource dynamicDataSource(@Qualifier("primaryDataSource") DataSource primaryDataSource,
+                                               @Qualifier("secondaryDataSource") DataSource secondaryDataSource) {
         Map<Object, Object> targetDataSources = new HashMap<>();
-        targetDataSources.put(DbContextHolder.DbType.MASTER, masterDataSource);
-        targetDataSources.put(DbContextHolder.DbType.SLAVE, slaveDataSource);
+        targetDataSources.put(DbContextHolder.DbType.MASTER, primaryDataSource);
+        targetDataSources.put(DbContextHolder.DbType.SLAVE, secondaryDataSource);
 
         DynamicDataSource dataSource = new DynamicDataSource();
         dataSource.setTargetDataSources(targetDataSources);
-        dataSource.setDefaultTargetDataSource(masterDataSource);
+        dataSource.setDefaultTargetDataSource(primaryDataSource);
 
         return dataSource;
     }
@@ -80,11 +58,11 @@ public class MyBatisConfig {
     @Bean
     public SqlSessionFactory sqlSessionFactory(DynamicDataSource dynamicDataSource) throws Exception {
         SqlSessionFactoryBean sqlSessionFactoryBean = new SqlSessionFactoryBean();
-        sqlSessionFactoryBean.setDataSource(dynamicDataSource);// 指定数据源(这个必须有，否则报错)
+        // 指定数据源(这个必须有，否则报错)
+        sqlSessionFactoryBean.setDataSource(dynamicDataSource);
         // 下边两句仅仅用于*.xml文件，如果整个持久层操作不需要使用到xml文件的话（只用注解就可以搞定），则不加
-//        sqlSessionFactoryBean.setTypeAliasesPackage("self.sunng");// 指定基包
-//        sqlSessionFactoryBean.setMapperLocations(
-//                new PathMatchingResourcePatternResolver().getResources("classpath:mapper/**/*.xml"));//
+        // sqlSessionFactoryBean.setTypeAliasesPackage("self.sunng");
+        // sqlSessionFactoryBean.setMapperLocations(new PathMatchingResourcePatternResolver().getResources("classpath:mapper/**/*.xml"));
 
         return sqlSessionFactoryBean.getObject();
     }

@@ -10,7 +10,7 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.transaction.annotation.Transactional;
 import self.sunng.multidatasourcewithtransaction.Application;
 import self.sunng.multidatasourcewithtransaction.dao.User;
-import self.sunng.multidatasourcewithtransaction.dao.UserMapper;
+import self.sunng.multidatasourcewithtransaction.dao.mapper.UserMapper;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @SpringBootTest(classes = Application.class)
@@ -23,7 +23,10 @@ public class ApplicationTests {
 	@Test
 	@Rollback
 	public void findByName() throws Exception {
-		userMapper.insert("AAA", 20);
+        User user = new User();
+        user.setName("AAA");
+        user.setAge(33);
+		userMapper.insert(user);
 		User u = userMapper.findByName("AAA");
 		Assert.assertEquals(20, u.getAge().intValue());
 	}

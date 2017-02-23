@@ -1,29 +1,32 @@
 package self.sunng.multidatasourcewithtransaction.dao;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Repository;
-import self.sunng.multidatasourcewithtransaction.common.ReadOnlyConnection;
+import org.springframework.stereotype.Component;
+import self.sunng.multidatasourcewithtransaction.dao.mapper.UserMapper;
 
 /**
  * Created by sunxiaodong on 2016/11/12.
  */
-@Repository
+@Component
 public class UserDao {
 
     @Autowired
     UserMapper userMapper;
 
-//    @ReadOnlyConnection
     public User findByName(String name) {
         return userMapper.findByName(name);
     }
 
-    @ReadOnlyConnection
-    public int insert(String name, int age) {
-        return userMapper.insert(name, age);
+    public User findByID(long id) {
+        return userMapper.findByID(id);
     }
 
-    public User findByID(int id) {
-        return userMapper.findByID(id);
+    public long insert(User user) {
+        userMapper.insert(user);
+        return user.getId();
+    }
+
+    public int updateBalance(User user) {
+        return userMapper.update(user.getId(), user.getBalance());
     }
 }
